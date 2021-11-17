@@ -1,8 +1,24 @@
+FROM rust:alpine AS build
+
+# Until Alpine merges gst-rtsp-server into a release, pull all Gstreamer packages
+# from the "testing" release
+RUN apk add --no-cache \
+    -X http://dl-cdn.alpinelinux.org/alpine/edge/main \
+    -X http://dl-cdn.alpinelinux.org/alpine/edge/testing \
+  gst-rtsp-server-dev
+RUN apk add --no-cache musl-dev gcc
+
+# Use static linking to work around https://github.com/rust-lang/rust/pull/58575
+ENV RUSTFLAGS='-C target-feature=-crt-static'
+
+WORKDIR /usr/local/src/neolink
+
+# Build the main program
+COPY . /usr/local/src/neolink
+RUN cargo build --release
+
+# Create the release container. Match the base OS used to build
 FROM alpine:latest
-
-ARG TARGETPLATFORM
-
-RUN echo $(echo $TARGETPLATFORM | sed 's/\//-/g')$(ls buildx* | sed -e 's/^buildx//')
 
 RUN apk add --no-cache \
     -X http://dl-cdn.alpinelinux.org/alpine/edge/main \
@@ -16,6 +32,9 @@ RUN apk add --no-cache \
   gst-plugins-ugly \
   gst-rtsp-server
 
+COPY --from=build \
+  /usr/local/src/neolink/target/release/neolink \
+  /usr/local/bin/neolink
 COPY docker/entrypoint.sh /entrypoint.sh
 
 CMD ["/usr/local/bin/neolink", "rtsp", "--config", "/etc/neolink.toml"]
