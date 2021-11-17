@@ -1,40 +1,30 @@
-FROM rust:alpine AS build
+FROM debian:buster-slim
 
-# Until Alpine merges gst-rtsp-server into a release, pull all Gstreamer packages
-# from the "testing" release
-RUN apk add --no-cache \
-    -X http://dl-cdn.alpinelinux.org/alpine/edge/main \
-    -X http://dl-cdn.alpinelinux.org/alpine/edge/testing \
-  gst-rtsp-server-dev
-RUN apk add --no-cache musl-dev gcc
+ARG TARGETPLATFORM
 
-# Use static linking to work around https://github.com/rust-lang/rust/pull/58575
-ENV RUSTFLAGS='-C target-feature=-crt-static'
+RUN apt-get update
+RUN apt-get -y install \
+  wget \
+  unzip \
+  libgstrtspserver-1.0-0 \
+  libgstreamer1.0-0 \
+  libgstreamer-plugins-bad1.0-0 \
+  gstreamer1.0-plugins-good \
+  gstreamer1.0-plugins-bad
 
-WORKDIR /usr/local/src/neolink
+RUN mkdir -p /usr/local/bin
+RUN mkdir -p /tmp/neolink
 
-# Build the main program
-COPY . /usr/local/src/neolink
-RUN cargo build --release
+COPY download.sh /tmp/neolink/download.sh
+WORKDIR /tmp/neolink
 
-# Create the release container. Match the base OS used to build
-FROM alpine:latest
+RUN bash download.sh $TARGETPLATFORM neolink.zip
+RUN unzip -p neolink.zip neolink >/usr/local/bin/neolink
+RUN chmod +x /usr/local/bin/neolink
 
-RUN apk add --no-cache \
-    -X http://dl-cdn.alpinelinux.org/alpine/edge/main \
-    -X http://dl-cdn.alpinelinux.org/alpine/edge/testing \
-  libgcc \
-  tzdata \
-  gstreamer \
-  gst-plugins-base \
-  gst-plugins-good \
-  gst-plugins-bad \
-  gst-plugins-ugly \
-  gst-rtsp-server
+WORKDIR /
+RUN rm -rf /tmp/neolink
 
-COPY --from=build \
-  /usr/local/src/neolink/target/release/neolink \
-  /usr/local/bin/neolink
 COPY docker/entrypoint.sh /entrypoint.sh
 
 CMD ["/usr/local/bin/neolink", "rtsp", "--config", "/etc/neolink.toml"]
