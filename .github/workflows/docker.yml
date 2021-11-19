@@ -1,6 +1,9 @@
 # A single-shot build-n-pack on Alpine Linux
 name: Publish Docker image
-on: [push]
+on:
+  push:
+  schedule:
+    - cron:  '2 0 * * 0'
 
 jobs:
   push_to_registry:
