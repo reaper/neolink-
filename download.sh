@@ -6,7 +6,7 @@ FILE_DESTINATION=$2
 if [[ "$TARGET_PLATFORM" == *"386"* ]]; then
   FILE_SUFFIX="i386-buster"
 elif [[ "$TARGET_PLATFORM" == *"amd64"* ]]; then
-  FILE_SUFFIX="ubuntu-18.04"
+  FILE_SUFFIX="ubuntu-20.04"
 elif [[ "$TARGET_PLATFORM" == *"arm64"* ]]; then
   FILE_SUFFIX="arm64-buster"
 elif [[ "$TARGET_PLATFORM" == *"arm"* ]]; then
